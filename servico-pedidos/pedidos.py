@@ -15,7 +15,7 @@ def novo_pedido():
     pedido = request.get_json()
 
     try:
-        print(f"📦 Enviando pedido à cozinha: {pedido['pedido_id']}")
+        print(f"Enviando pedido à cozinha: {pedido['pedido_id']}")
         resposta = requests.post(COZINHA_URL, json=pedido, timeout=5)
 
         if resposta.status_code == 200:
@@ -26,11 +26,11 @@ def novo_pedido():
                 "resposta_cozinha": dados
             }), 200
         else:
-            print(f"⚠️ Erro na resposta da cozinha: {resposta.status_code}")
+            print(f"Erro na resposta da cozinha: {resposta.status_code}")
             return jsonify({"erro": "Cozinha retornou erro"}), 500
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Erro de comunicação com a cozinha: {e}")
+        print(f"Erro de comunicação com a cozinha: {e}")
         return jsonify({"erro": "Não foi possível contatar a cozinha"}), 503
 
 

@@ -46,3 +46,104 @@ O sistema é composto por **6 módulos distribuídos obrigatórios** + **1 micro
 - **JavaScript** (`React` ou `Node.js + Express`)
 - **Banco de dados**: SQLite ou PostgreSQL (acessado via microserviço)
 - **Comunicação entre módulos**: via rede local (`127.0.0.1:<porta>`)
+
+---
+
+# Interface Web
+
+## 📌 Descrição
+- Interface gráfica onde o cliente realiza o pedido e acompanha o status.
+
+## 🔌 Porta usada
+- Porta: `3000`
+
+## 📥 Comunicação
+- Envia `POST /novo-pedido` para o módulo de Pedidos
+
+
+---
+
+# Microserviço de Banco de Dados
+
+## 📌 Descrição
+- Responsável por registrar e consultar dados persistentes sobre os pedidos.
+
+## 🔌 Porta usada
+- Porta: `8000`
+
+## 📥 Comunicação
+- Recebe `POST` de Pedidos com dados para persistência
+
+
+---
+
+# Serviço de Cozinha
+
+## 📌 Descrição
+- Responsável por preparar os pedidos.
+- Consulta o estoque e os funcionários antes de aceitar ou recusar um pedido.
+
+## 🔌 Porta usada
+- Porta: `5000`
+
+## 📥 Comunicação
+- Recebe `POST /preparar` de Pedidos
+- Envia `GET` para Estoque e Funcionários
+
+
+---
+
+# Serviço de Estoque
+
+## 📌 Descrição
+- Verifica se há ingredientes disponíveis para o preparo do pedido.
+
+## 🔌 Porta usada
+- Porta: `6000`
+
+## 📥 Comunicação
+- Responde `GET /disponivel` da Cozinha
+
+
+---
+
+# Serviço de Funcionários
+
+## 📌 Descrição
+- Informa se há equipe de cozinha disponível para preparar o pedido.
+
+## 🔌 Porta usada
+- Porta: `9000`
+
+## 📥 Comunicação
+- Responde `GET /disponivel-funcionarios` da Cozinha
+
+
+---
+
+# Serviço de Notificações
+
+## 📌 Descrição
+- Envia notificações simuladas sobre o status do pedido para o cliente.
+
+## 🔌 Porta usada
+- Porta: `7000`
+
+## 📥 Comunicação
+- Recebe `POST` de Pedidos com mensagens para o cliente
+
+---
+
+# Serviço de Pedidos
+
+## 📌 Descrição
+- Responsável por receber os pedidos e orquestrar o fluxo do sistema.
+- Envia o pedido para a cozinha e trata as respostas.
+
+## 🔌 Porta usada
+- Porta: `4000`
+
+## 📥 Comunicação
+- Recebe requisição `POST /novo-pedido` da Interface Web
+- Envia `POST /preparar` para a Cozinha
+- Envia `POST` para Notificações e Banco
