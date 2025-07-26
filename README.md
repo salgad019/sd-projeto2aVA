@@ -1,149 +1,114 @@
-# sd-projeto2aVA
 # 🍽️ Sistema Distribuído de Pedidos de Restaurante
 
 Projeto acadêmico desenvolvido para a disciplina de **Sistemas Distribuídos** (UFRPE), cujo objetivo é implementar um sistema realista e modular, com processos que se comunicam via **IP e porta**, mesmo executando localmente.
 
 ---
 
-## 📦 Descrição do Projeto
+## 📦 Descrição Geral
 
-O sistema simula o funcionamento de um restaurante digital, no qual clientes realizam pedidos e os módulos internos cuidam da preparação, verificação de estoque, notificações, gerenciamento da equipe e persistência de dados. 
+O sistema simula o funcionamento de um restaurante digital, em que os clientes realizam pedidos e os módulos internos lidam com a preparação, verificação de estoque, notificações, gerenciamento da equipe e persistência dos dados.
 
-Cada funcionalidade é implementada como um **processo independente (módulo)**, que se comunica com os demais via rede.
-
----
-
-## 🔗 Arquitetura Geral
-
-O sistema é composto por **6 módulos distribuídos obrigatórios** + **1 microserviço de banco de dados** (que **não conta como módulo**, mas é essencial). Cada processo escuta em uma porta diferente e se comunica com os demais via TCP/HTTP.
-
-| Módulo                        | Porta | Linguagem | Descrição |
-|------------------------------|-------|-----------|-----------|
-| **1. Interface Web**         | 3000  | JavaScript (Node.js ou React) | Permite ao cliente fazer pedidos e acompanhar o status |
-| **2. Serviço de Pedidos**    | 4000  | Python     | Núcleo do sistema: recebe pedidos e orquestra os demais serviços |
-| **3. Serviço de Cozinha**    | 5000  | Java       | Simula o preparo dos pedidos e consulta estoque e equipe |
-| **4. Serviço de Estoque**    | 6000  | Python     | Verifica a disponibilidade de ingredientes |
-| **5. Serviço de Notificações**| 7000 | Java       | Envia atualizações de status ao cliente |
-| **6. Serviço de Funcionários**| 9000 | Python     | Gerencia turnos e disponibilidade da equipe |
-| *Microserviço de Banco de Dados* | *8000* | *Java* | *Responsável por persistência de pedidos, estoque e registros* |
+Cada funcionalidade é implementada como um **módulo/processo independente**, que se comunica via rede (TCP/HTTP).
 
 ---
 
 ## 🎯 Objetivos de Aprendizagem
 
 - Aplicar os fundamentos de **sistemas distribuídos** com múltiplos processos
-- Implementar comunicação via **IP e porta** usando sockets ou requisições HTTP
-- Simular um sistema baseado em **microserviços**
-- Integrar **múltiplas linguagens de programação no backend** (Python e Java)
+- Implementar comunicação via **IP e porta**
+- Simular uma arquitetura de **microserviços**
+- Integrar **múltiplas linguagens** no backend (Python e Java)
 - Utilizar o modelo **cliente-servidor distribuído**
+
+---
+
+## 🔌 Módulos, Portas e Responsabilidades
+
+| Módulo                      | Porta | Linguagem  | Função Principal |
+|-----------------------------|-------|------------|------------------|
+| **Interface Web**           | 3000  | JavaScript | Cliente faz pedido e acompanha o status |
+| **Serviço de Pedidos**      | 4000  | Python     | Orquestrador do sistema, coordena os demais serviços |
+| **Serviço de Cozinha**      | 5000  | Java       | Prepara pedidos, consulta estoque e equipe |
+| **Serviço de Estoque**      | 6000  | Python     | Verifica disponibilidade de ingredientes |
+| **Serviço de Notificações** | 7000  | Java       | Notifica cliente sobre o status |
+| **Microserviço de Banco**   | 8000  | Java       | Persistência de dados dos pedidos e históricos |
+| **Serviço de Funcionários** | 9000  | Python     | Informa disponibilidade da equipe de cozinha |
+
+---
+
+## 🔁 Fluxo de Comunicação
+
+1. O cliente realiza um pedido via **Interface Web**
+2. A Interface envia `POST /novo-pedido` para o **Serviço de Pedidos**
+3. O **Serviço de Pedidos** envia `POST /preparar` para o **Serviço de Cozinha**
+4. A **Cozinha** consulta:
+   - `GET /disponivel` no **Serviço de Estoque**
+   - `GET /disponivel-funcionarios` no **Serviço de Funcionários**
+5. A Cozinha responde com `em_preparo` ou `recusado`
+6. O **Serviço de Pedidos**:
+   - Envia `POST` para o **Serviço de Notificações**
+   - Envia `POST` para o **Microserviço de Banco de Dados**
+
+---
+
+## 🧭 Mapa Visual do Fluxo
+
+```plaintext
+[ Interface Web ] → POST /novo-pedido
+         ↓
+[ Serviço de Pedidos ] → POST /preparar → [ Serviço de Cozinha ]
+                                   ↓
+         [ Estoque ] ← GET /disponivel
+         [ Funcionários ] ← GET /disponivel-funcionarios
+                                   ↓
+ ← Resposta: em_preparo / recusado
+         ↓
+[ Banco de Dados ] ← POST /registrar
+[ Notificações ] ← POST /notificar
+```
+
+---
+
+## 📬 Formatos de Mensagens
+
+### Pedido enviado à Cozinha
+
+```json
+{
+  "pedido_id": "abc123",
+  "itens": [
+    { "produto": "Pizza Margherita", "quantidade": 1 },
+    { "produto": "Suco", "quantidade": 2 }
+  ],
+  "prioridade": "normal"
+}
+```
+
+### Resposta da Cozinha
+
+```json
+{
+  "pedido_id": "abc123",
+  "status": "em_preparo",
+  "tempo_estimado_min": 25
+}
+```
+
+### Notificação
+
+```json
+{
+  "pedido_id": "abc123",
+  "mensagem": "Seu pedido está sendo preparado!"
+}
+```
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Python** (`socket`, `requests`, `Flask`)
-- **Java** (`HttpServer`, `Spring Boot`, `sockets`)
-- **JavaScript** (`React` ou `Node.js + Express`)
-- **Banco de dados**: SQLite ou PostgreSQL (acessado via microserviço)
-- **Comunicação entre módulos**: via rede local (`127.0.0.1:<porta>`)
-
----
-
-# Interface Web
-
-## 📌 Descrição
-- Interface gráfica onde o cliente realiza o pedido e acompanha o status.
-
-## 🔌 Porta usada
-- Porta: `3000`
-
-## 📥 Comunicação
-- Envia `POST /novo-pedido` para o módulo de Pedidos
-
-
----
-
-# Microserviço de Banco de Dados
-
-## 📌 Descrição
-- Responsável por registrar e consultar dados persistentes sobre os pedidos.
-
-## 🔌 Porta usada
-- Porta: `8000`
-
-## 📥 Comunicação
-- Recebe `POST` de Pedidos com dados para persistência
-
-
----
-
-# Serviço de Cozinha
-
-## 📌 Descrição
-- Responsável por preparar os pedidos.
-- Consulta o estoque e os funcionários antes de aceitar ou recusar um pedido.
-
-## 🔌 Porta usada
-- Porta: `5000`
-
-## 📥 Comunicação
-- Recebe `POST /preparar` de Pedidos
-- Envia `GET` para Estoque e Funcionários
-
-
----
-
-# Serviço de Estoque
-
-## 📌 Descrição
-- Verifica se há ingredientes disponíveis para o preparo do pedido.
-
-## 🔌 Porta usada
-- Porta: `6000`
-
-## 📥 Comunicação
-- Responde `GET /disponivel` da Cozinha
-
-
----
-
-# Serviço de Funcionários
-
-## 📌 Descrição
-- Informa se há equipe de cozinha disponível para preparar o pedido.
-
-## 🔌 Porta usada
-- Porta: `9000`
-
-## 📥 Comunicação
-- Responde `GET /disponivel-funcionarios` da Cozinha
-
-
----
-
-# Serviço de Notificações
-
-## 📌 Descrição
-- Envia notificações simuladas sobre o status do pedido para o cliente.
-
-## 🔌 Porta usada
-- Porta: `7000`
-
-## 📥 Comunicação
-- Recebe `POST` de Pedidos com mensagens para o cliente
-
----
-
-# Serviço de Pedidos
-
-## 📌 Descrição
-- Responsável por receber os pedidos e orquestrar o fluxo do sistema.
-- Envia o pedido para a cozinha e trata as respostas.
-
-## 🔌 Porta usada
-- Porta: `4000`
-
-## 📥 Comunicação
-- Recebe requisição `POST /novo-pedido` da Interface Web
-- Envia `POST /preparar` para a Cozinha
-- Envia `POST` para Notificações e Banco
+- **Python**: `Flask`, `requests`, `socket`
+- **Java**: `HttpServer`, `Spring Boot`, `sockets`
+- **JavaScript**: `React`, `Node.js + Express`
+- **Banco de Dados**: SQLite ou PostgreSQL
+- Comunicação entre módulos via `127.0.0.1:<porta>` (rede local)
