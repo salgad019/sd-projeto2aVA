@@ -9,6 +9,11 @@ class RestaurantAPI {
       pedidos: `${this.baseURL}/pedidos`,
       notificacoes: `${this.baseURL}/notificacoes`,
     };
+    // Store current notification filters for auto-refresh
+    this.currentNotificationFilters = {
+      tipo: "",
+      pedido_id: "",
+    };
     this.init();
   }
 
@@ -97,10 +102,30 @@ class RestaurantAPI {
       this.checkAllServices();
     }, 30000);
 
-    // Auto-refresh notifications every 10 seconds
+    // Auto-refresh notifications every 5 seconds for real-time updates
     setInterval(() => {
       this.loadNotificacoes();
+    }, 5000);
+
+    // IMPORTANT: Poll kitchen status every 10 seconds to trigger completion notifications
+    // This is necessary because the kitchen only checks for finished orders when these endpoints are called
+    setInterval(() => {
+      // Silently poll kitchen status to trigger completion notifications
+      this.apiCall(`${this.services.cozinha}/status`).catch(() => {});
+      this.apiCall(`${this.services.cozinha}/pedidos-ativos`).catch(() => {});
     }, 10000);
+
+    // Auto-refresh active orders display every 15 seconds if currently shown
+    setInterval(() => {
+      // Only refresh if the active orders view is currently shown
+      if (
+        document
+          .getElementById("results-area")
+          .innerHTML.includes("Pedidos Ativos")
+      ) {
+        this.getActivePedidos();
+      }
+    }, 15000);
   }
 
   // API Methods
@@ -363,6 +388,71 @@ class RestaurantAPI {
     }
   }
 
+  async getActivePedidos() {
+    try {
+      const activeOrders = await this.apiCall(
+        `${this.services.cozinha}/pedidos-ativos`
+      );
+
+      if (activeOrders.total === 0) {
+        this.showResult(
+          "🍳 Pedidos Ativos na Cozinha",
+          '<div class="alert alert-success"><i class="fas fa-check"></i> Nenhum pedido em preparo no momento</div>'
+        );
+        return;
+      }
+
+      const ordersHtml = activeOrders.pedidos_ativos
+        .map(
+          (order) => `
+        <div class="order-item border-start border-warning border-3 ps-3 mb-3">
+          <div class="row">
+            <div class="col-md-8">
+              <strong>Pedido #${order.pedido_id}</strong>
+              <span class="badge bg-warning text-dark ms-2">EM PREPARO</span>
+              <br>
+              <small class="text-muted">
+                Iniciado: ${new Date(order.inicio_preparo).toLocaleString(
+                  "pt-BR"
+                )}
+              </small>
+              <br>
+              <small class="text-muted">
+                Tempo estimado: ${order.tempo_estimado_min} min
+              </small>
+            </div>
+            <div class="col-md-4 text-end">
+              <div class="text-warning">
+                <i class="fas fa-clock"></i>
+                ${Math.round(
+                  (new Date() - new Date(order.inicio_preparo)) / 60000
+                )} min
+              </div>
+              <small class="text-muted">em preparo</small>
+            </div>
+          </div>
+        </div>
+      `
+        )
+        .join("");
+
+      this.showResult(
+        "🍳 Pedidos Ativos na Cozinha",
+        `
+          <div class="alert alert-warning">
+            <strong>Total de pedidos em preparo:</strong> ${activeOrders.total}
+          </div>
+          ${ordersHtml}
+        `
+      );
+    } catch (error) {
+      this.showAlert(
+        `❌ Erro ao obter pedidos ativos: ${error.message}`,
+        "danger"
+      );
+    }
+  }
+
   // Pedidos Methods
   async createPedido() {
     const pedidoId = document.getElementById("pedido-id").value;
@@ -518,64 +608,255 @@ class RestaurantAPI {
   // Notificações Methods
   async loadNotificacoes() {
     try {
-      const notificacoes = await this.apiCall(
+      const response = await this.apiCall(
         `${this.services.notificacoes}/notificacoes`
       );
 
+      const notificacoes = response.notificacoes || response;
+      // Ensure notificacoes is an array for length calculation
+      const notificacoesArray = Array.isArray(notificacoes) ? notificacoes : [];
+      const total = response.total || notificacoesArray.length;
+
       const info = document.getElementById("notificacoes-info");
       info.innerHTML = `
-                <p class="text-warning mb-1"><i class="fas fa-bell"></i> ${notificacoes.length} notificações</p>
+                <p class="text-warning mb-1"><i class="fas fa-bell"></i> ${total} notificações</p>
                 <small class="text-muted">Sistema de alertas ativo</small>
             `;
 
-      // Show in results area if requested
+      // Only auto-refresh if we're specifically showing the "Ver Todas" view, not other notification views
       if (
         document
           .getElementById("results-area")
-          .innerHTML.includes("Notificações Recentes")
+          .innerHTML.includes("Central de Notificações")
       ) {
-        this.showNotificacoesDetails(notificacoes);
+        // Apply current filters during auto-refresh to preserve user's filter selection
+        this.refreshNotificationsWithCurrentFilters();
       }
     } catch (error) {
       console.error("Erro ao carregar notificações:", error);
     }
   }
 
-  async showNotificacoesDetails(notificacoes = null) {
+  async refreshNotificationsWithCurrentFilters() {
     try {
-      if (!notificacoes) {
-        notificacoes = await this.apiCall(
-          `${this.services.notificacoes}/notificacoes`
-        );
+      let url = `${this.services.notificacoes}/notificacoes?`;
+      const params = new URLSearchParams();
+
+      // Apply current filters
+      if (this.currentNotificationFilters.tipo) {
+        params.append("tipo", this.currentNotificationFilters.tipo);
+      }
+      if (this.currentNotificationFilters.pedido_id) {
+        params.append("pedido_id", this.currentNotificationFilters.pedido_id);
       }
 
-      const notificacoesHtml = notificacoes
-        .slice(0, 10)
-        .map(
-          (notif) => `
-                <div class="notification-item">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <strong>Pedido #${notif.pedido_id}</strong><br>
-                            <span>${notif.mensagem}</span>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <small class="text-muted">
-                                ${new Date(notif.created_at).toLocaleString(
-                                  "pt-BR"
-                                )}
-                            </small>
-                        </div>
+      const response = await this.apiCall(url + params.toString());
+      const notificacoes = response.notificacoes || response;
+      const notificacoesArray = Array.isArray(notificacoes) ? notificacoes : [];
+
+      // Use autoScroll=false for auto-refresh to prevent unwanted scrolling
+      this.showNotificacoesDetailsInternal(notificacoesArray, false);
+    } catch (error) {
+      console.error("Erro ao atualizar notificações com filtros:", error);
+    }
+  }
+
+  async showNotificacoesDetails(notificacoes = null) {
+    // Reset filters when manually showing all notifications
+    if (!notificacoes) {
+      this.currentNotificationFilters.tipo = "";
+      this.currentNotificationFilters.pedido_id = "";
+    }
+    return this.showNotificacoesDetailsInternal(notificacoes, true);
+  }
+
+  async showNotificacoesDetailsInternal(
+    notificacoes = null,
+    autoScroll = true
+  ) {
+    try {
+      if (!notificacoes) {
+        const response = await this.apiCall(
+          `${this.services.notificacoes}/notificacoes`
+        );
+        notificacoes = response.notificacoes || response;
+      }
+
+      const getNotificationIcon = (tipo) => {
+        switch (tipo) {
+          case "pedido_criado":
+            return "🆕";
+          case "pedido_aceito":
+            return "✅";
+          case "pedido_recusado":
+            return "❌";
+          case "pedido_finalizado":
+            return "🎉";
+          case "sistema":
+            return "ℹ️";
+          default:
+            return "📢";
+        }
+      };
+
+      const getNotificationColor = (tipo) => {
+        switch (tipo) {
+          case "pedido_criado":
+            return "border-primary";
+          case "pedido_aceito":
+            return "border-success";
+          case "pedido_recusado":
+            return "border-danger";
+          case "pedido_finalizado":
+            return "border-warning";
+          case "sistema":
+            return "border-info";
+          default:
+            return "border-secondary";
+        }
+      };
+
+      // Ensure notificacoes is always an array
+      const notificacoesArray = Array.isArray(notificacoes) ? notificacoes : [];
+      console.log(
+        "🔧 UPDATED JS: showNotificacoesDetails - notificacoes type:",
+        typeof notificacoes,
+        "isArray:",
+        Array.isArray(notificacoes),
+        "length:",
+        notificacoesArray.length
+      );
+
+      const notificacoesHtml = notificacoesArray
+        .slice(0, 15)
+        .map((notif) => {
+          let detalhesHtml = "";
+          if (notif.detalhes) {
+            try {
+              const detalhes =
+                typeof notif.detalhes === "string"
+                  ? JSON.parse(notif.detalhes)
+                  : notif.detalhes;
+
+              if (Object.keys(detalhes).length > 0) {
+                detalhesHtml = `
+                    <div class="mt-2">
+                      <small class="text-muted">
+                        ${Object.entries(detalhes)
+                          .map(
+                            ([key, value]) =>
+                              `<span class="badge bg-light text-dark me-1">${key}: ${value}</span>`
+                          )
+                          .join("")}
+                      </small>
                     </div>
+                  `;
+              }
+            } catch (e) {
+              // If parsing fails, show as text
+              detalhesHtml = `<div class="mt-1"><small class="text-muted">${notif.detalhes}</small></div>`;
+            }
+          }
+
+          return `
+              <div class="notification-item border ${getNotificationColor(
+                notif.tipo
+              )} mb-3 p-3 rounded">
+                <div class="row">
+                  <div class="col-md-8">
+                    <div class="d-flex align-items-center mb-2">
+                      <span class="me-2" style="font-size: 1.2em;">${getNotificationIcon(
+                        notif.tipo
+                      )}</span>
+                      <strong>Pedido #${notif.pedido_id}</strong>
+                      <span class="badge bg-secondary ms-2">${notif.tipo
+                        .replace("_", " ")
+                        .toUpperCase()}</span>
+                    </div>
+                    <span class="text-dark">${notif.mensagem}</span>
+                    ${detalhesHtml}
+                  </div>
+                  <div class="col-md-4 text-end">
+                    <small class="text-muted">
+                      ${new Date(notif.created_at).toLocaleString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </small>
+                  </div>
                 </div>
-            `
-        )
+              </div>
+            `;
+        })
         .join("");
 
+      // Add filter controls
+      const filterControls = `
+        <div class="mb-4">
+          <div class="row">
+            <div class="col-md-6">
+              <select class="form-select" id="notification-type-filter" onchange="restaurantAPI.filterNotifications()">
+                <option value="">Todos os tipos</option>
+                <option value="pedido_criado" ${
+                  this.currentNotificationFilters.tipo === "pedido_criado"
+                    ? "selected"
+                    : ""
+                }>🆕 Pedidos Criados</option>
+                <option value="pedido_aceito" ${
+                  this.currentNotificationFilters.tipo === "pedido_aceito"
+                    ? "selected"
+                    : ""
+                }>✅ Pedidos Aceitos</option>
+                <option value="pedido_recusado" ${
+                  this.currentNotificationFilters.tipo === "pedido_recusado"
+                    ? "selected"
+                    : ""
+                }>❌ Pedidos Recusados</option>
+                <option value="pedido_finalizado" ${
+                  this.currentNotificationFilters.tipo === "pedido_finalizado"
+                    ? "selected"
+                    : ""
+                }>🎉 Pedidos Finalizados</option>
+                <option value="sistema" ${
+                  this.currentNotificationFilters.tipo === "sistema"
+                    ? "selected"
+                    : ""
+                }>ℹ️ Sistema</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <input type="text" class="form-control" id="notification-pedido-filter" 
+                     placeholder="Filtrar por ID do pedido..." 
+                     value="${this.currentNotificationFilters.pedido_id}"
+                     onchange="restaurantAPI.filterNotifications()">
+            </div>
+          </div>
+        </div>
+      `;
+
       this.showResult(
-        "🔔 Notificações Recentes",
-        notificacoesHtml ||
-          '<p class="text-muted">Nenhuma notificação encontrada</p>'
+        "🔔 Central de Notificações",
+        `
+          <div class="row mb-3">
+            <div class="col-md-8">
+              ${filterControls}
+            </div>
+            <div class="col-md-4">
+              <div class="alert alert-info text-center">
+                <strong>🔄 Atualizações em Tempo Real</strong><br>
+                <small>As notificações são atualizadas automaticamente a cada 5s</small>
+              </div>
+            </div>
+          </div>
+          ${
+            notificacoesHtml ||
+            '<p class="text-muted">Nenhuma notificação encontrada</p>'
+          }
+        `,
+        autoScroll
       );
     } catch (error) {
       this.showAlert(
@@ -585,10 +866,292 @@ class RestaurantAPI {
     }
   }
 
+  async filterNotifications() {
+    const typeFilter = document.getElementById(
+      "notification-type-filter"
+    )?.value;
+    const pedidoFilter = document.getElementById(
+      "notification-pedido-filter"
+    )?.value;
+
+    // Store current filters for auto-refresh
+    this.currentNotificationFilters.tipo = typeFilter || "";
+    this.currentNotificationFilters.pedido_id = pedidoFilter || "";
+
+    try {
+      let url = `${this.services.notificacoes}/notificacoes?`;
+      const params = new URLSearchParams();
+
+      if (typeFilter) params.append("tipo", typeFilter);
+      if (pedidoFilter) params.append("pedido_id", pedidoFilter);
+
+      const response = await this.apiCall(url + params.toString());
+      const notificacoes = response.notificacoes || response;
+
+      // Ensure we pass an array
+      const notificacoesArray = Array.isArray(notificacoes) ? notificacoes : [];
+      this.showNotificacoesDetailsInternal(notificacoesArray, true);
+    } catch (error) {
+      this.showAlert(
+        `❌ Erro ao filtrar notificações: ${error.message}`,
+        "danger"
+      );
+    }
+  }
+
+  async getNotificationSummary() {
+    try {
+      const summary = await this.apiCall(
+        `${this.services.notificacoes}/notificacoes/resumo`
+      );
+
+      this.showResult(
+        "📊 Resumo de Notificações",
+        `
+          <div class="row">
+            ${Object.entries(summary.resumo_por_tipo)
+              .map(
+                ([tipo, count]) => `
+              <div class="col-md-6 col-lg-4 mb-3">
+                <div class="metric-card">
+                  <h3>${count}</h3>
+                  <p>${tipo.replace("_", " ").toUpperCase()}</p>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+          <div class="alert alert-info mt-3">
+            <strong>Total de Notificações:</strong> ${
+              summary.total_notificacoes
+            }
+          </div>
+        `
+      );
+    } catch (error) {
+      this.showAlert(`❌ Erro ao obter resumo: ${error.message}`, "danger");
+    }
+  }
+
+  async trackOrder() {
+    const orderId = document.getElementById("track-order-id").value;
+    if (!orderId) {
+      this.showAlert("Por favor, informe o ID do pedido", "warning");
+      return;
+    }
+
+    try {
+      const response = await this.apiCall(
+        `${this.services.notificacoes}/notificacoes?pedido_id=${orderId}`
+      );
+      const notificacoes = response.notificacoes || response;
+
+      // Ensure notificacoes is an array
+      const notificacoesArray = Array.isArray(notificacoes) ? notificacoes : [];
+
+      if (notificacoesArray.length === 0) {
+        this.showResult(
+          `🔍 Rastreamento do Pedido #${orderId}`,
+          '<p class="text-muted">Nenhuma notificação encontrada para este pedido</p>'
+        );
+        return;
+      }
+
+      // Create timeline
+      const timeline = notificacoesArray
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map((notif, index) => {
+          const isLast = index === notificacoes.length - 1;
+          return `
+            <div class="timeline-item ${isLast ? "current" : ""}">
+              <div class="timeline-marker"></div>
+              <div class="timeline-content">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="mb-1">${notif.tipo
+                    .replace("_", " ")
+                    .toUpperCase()}</h6>
+                  <small class="text-muted">
+                    ${new Date(notif.created_at).toLocaleString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </small>
+                </div>
+                <p class="mb-1">${notif.mensagem}</p>
+                ${
+                  notif.detalhes
+                    ? `<small class="text-muted">${
+                        typeof notif.detalhes === "string"
+                          ? notif.detalhes
+                          : JSON.stringify(JSON.parse(notif.detalhes), null, 2)
+                      }</small>`
+                    : ""
+                }
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      this.showResult(
+        `🔍 Rastreamento do Pedido #${orderId}`,
+        `
+          <div class="order-timeline">
+            ${timeline}
+          </div>
+          <div class="mt-3 text-center">
+            <button class="btn btn-primary" onclick="restaurantAPI.trackOrder()">
+              🔄 Atualizar Rastreamento
+            </button>
+          </div>
+          <style>
+            .order-timeline {
+              position: relative;
+              padding-left: 30px;
+            }
+            .timeline-item {
+              position: relative;
+              padding-bottom: 20px;
+              border-left: 2px solid #e9ecef;
+            }
+            .timeline-item.current {
+              border-left-color: #28a745;
+            }
+            .timeline-marker {
+              position: absolute;
+              left: -6px;
+              top: 0;
+              width: 12px;
+              height: 12px;
+              border-radius: 50%;
+              background-color: #6c757d;
+              border: 2px solid white;
+            }
+            .timeline-item.current .timeline-marker {
+              background-color: #28a745;
+            }
+            .timeline-content {
+              margin-left: 20px;
+              padding: 10px;
+              background-color: #f8f9fa;
+              border-radius: 5px;
+            }
+          </style>
+        `
+      );
+    } catch (error) {
+      this.showAlert(`❌ Erro ao rastrear pedido: ${error.message}`, "danger");
+    }
+  }
+
+  async startLiveNotificationDashboard() {
+    this.showResult(
+      "📡 Dashboard de Notificações em Tempo Real",
+      `
+        <div class="alert alert-success text-center">
+          <h5><i class="fas fa-broadcast-tower"></i> Dashboard Ativo</h5>
+          <p>Acompanhe as notificações em tempo real com atualizações automáticas a cada 3 segundos</p>
+        </div>
+        <div id="live-notifications-container">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2">Carregando notificações...</p>
+          </div>
+        </div>
+      `
+    );
+
+    // Start live updates
+    this.liveNotificationInterval = setInterval(async () => {
+      try {
+        const response = await this.apiCall(
+          `${this.services.notificacoes}/notificacoes?limit=10`
+        );
+        const notificacoes = response.notificacoes || response;
+        console.log(notificacoes);
+        // Ensure notificacoes is an array
+        const notificacoesArray = Array.isArray(notificacoes)
+          ? notificacoes
+          : [];
+
+        const container = document.getElementById(
+          "live-notifications-container"
+        );
+        if (!container) return; // Dashboard was closed
+
+        const notificacoesHtml = notificacoesArray
+          .slice(0, 10)
+          .map((notif) => {
+            const timeDiff = Math.round(
+              (new Date() - new Date(notif.created_at)) / 1000
+            );
+            const timeAgo =
+              timeDiff < 60
+                ? `${timeDiff}s atrás`
+                : timeDiff < 3600
+                ? `${Math.round(timeDiff / 60)}m atrás`
+                : `${Math.round(timeDiff / 3600)}h atrás`;
+
+            return `
+              <div class="card mb-2 ${timeDiff < 30 ? "border-success" : ""}">
+                <div class="card-body py-2">
+                  <div class="row align-items-center">
+                    <div class="col-md-8">
+                      <small class="text-muted">${notif.tipo.toUpperCase()}</small>
+                      <div><strong>Pedido #${notif.pedido_id}</strong></div>
+                      <div>${notif.mensagem}</div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                      <small class="text-muted">${timeAgo}</small>
+                      ${
+                        timeDiff < 30
+                          ? '<span class="badge bg-success">NOVO</span>'
+                          : ""
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        container.innerHTML =
+          notificacoesHtml ||
+          '<p class="text-muted text-center">Nenhuma notificação encontrada</p>';
+      } catch (error) {
+        console.error("Erro no dashboard em tempo real:", error);
+      }
+    }, 3000);
+
+    // Stop live updates after 5 minutes
+    setTimeout(() => {
+      if (this.liveNotificationInterval) {
+        clearInterval(this.liveNotificationInterval);
+        this.showAlert(
+          "Dashboard de tempo real pausado após 5 minutos",
+          "info"
+        );
+      }
+    }, 300000);
+  }
+
+  stopLiveNotificationDashboard() {
+    if (this.liveNotificationInterval) {
+      clearInterval(this.liveNotificationInterval);
+      this.liveNotificationInterval = null;
+      this.showAlert("Dashboard de tempo real pausado", "info");
+    }
+  }
+
   // Integration Demo
   async simulateRestaurantFlow() {
     this.showAlert(
-      "🚀 Iniciando simulação do fluxo completo do restaurante...",
+      "🚀 Iniciando simulação completa com sistema de notificações...",
       "info"
     );
 
@@ -600,86 +1163,104 @@ class RestaurantAPI {
       // Step 2: Add ingredients to stock
       this.showAlert("📦 Adicionando ingredientes ao estoque...", "info");
       await this.apiCall(`${this.services.estoque}/cadastrar`, "POST", {
-        produto: "Frango",
-        quantidade: 10,
+        produto: "Pizza Margherita",
+        quantidade: 5,
       });
       await this.apiCall(`${this.services.estoque}/cadastrar`, "POST", {
-        produto: "Arroz",
-        quantidade: 20,
-      });
-      await this.apiCall(`${this.services.estoque}/cadastrar`, "POST", {
-        produto: "Feijão",
-        quantidade: 15,
+        produto: "Hambúrguer",
+        quantidade: 3,
       });
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Step 3: Create employee
-      this.showAlert("👥 Criando funcionário...", "info");
+      // Step 3: Ensure we have staff
+      this.showAlert("👥 Verificando funcionários...", "info");
       try {
         await this.apiCall(`${this.services.funcionarios}/`, "POST", {
-          name: "Chef Silva",
-          email: "chef@restaurante.com",
+          name: "Chef Simulação",
+          email: "chef.sim@restaurante.com",
           password: "senha123",
         });
       } catch (error) {
-        // Employee might already exist
-        console.log("Funcionário já existe ou erro:", error.message);
+        console.log("Funcionário já existe:", error.message);
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Step 4: Create order
-      this.showAlert("🧾 Criando pedido...", "info");
-      const pedidoId = `PED${Date.now()}`;
+      // Step 4: Create successful order
+      this.showAlert("🧾 Criando pedido que será aceito...", "info");
+      const pedidoId = `SIM${Date.now()}`;
       await this.apiCall(`${this.services.pedidos}/novo-pedido`, "POST", {
         pedido_id: pedidoId,
-        itens: [
-          { nome: "Frango Grelhado", quantidade: 1, preco: 25.9 },
-          { nome: "Arroz Branco", quantidade: 1, preco: 8.0 },
-          { nome: "Feijão Tropeiro", quantidade: 1, preco: 12.0 },
-        ],
-        mesa: 5,
-        cliente_id: "CLI001",
+        itens: [{ nome: "Pizza Margherita", quantidade: 1, preco: 25.9 }],
+        mesa: 10,
+        cliente_id: "CLIENTE_SIM",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Step 5: Create order that will be rejected (no stock)
+      this.showAlert("❌ Criando pedido que será recusado...", "info");
+      const pedidoRejeitado = `REJ${Date.now()}`;
+      await this.apiCall(`${this.services.pedidos}/novo-pedido`, "POST", {
+        pedido_id: pedidoRejeitado,
+        itens: [{ nome: "Item Inexistente", quantidade: 1, preco: 15.0 }],
+        mesa: 11,
+        cliente_id: "CLIENTE_REJ",
       });
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Step 5: Send to kitchen
-      this.showAlert("🍳 Enviando pedido para a cozinha...", "info");
-      try {
-        await this.apiCall(`${this.services.cozinha}/preparar`, "POST", {
-          pedido_id: pedidoId,
-          itens: ["Frango", "Arroz", "Feijão"],
-        });
-      } catch (error) {
-        console.log("Erro na cozinha:", error.message);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Step 6: Show final results
+      // Step 6: Show comprehensive results
       this.showAlert(
-        "✅ Simulação concluída! Verificando resultados...",
+        "✅ Simulação concluída! Aguarde finalização dos pedidos...",
         "success"
       );
 
-      await this.loadEstoque();
-      await this.loadNotificacoes();
-      await this.getCozinhaStatus();
+      // Wait for potential completion notifications
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       this.showResult(
-        "🎉 Simulação Completa",
+        "🎉 Simulação Completa - Sistema de Notificações",
         `
-                <div class="alert alert-success">
-                    <h5><i class="fas fa-check-circle"></i> Fluxo Simulado com Sucesso!</h5>
-                    <p>O sistema demonstrou integração entre todos os microserviços:</p>
-                    <ul>
-                        <li>✅ Estoque atualizado com ingredientes</li>
-                        <li>✅ Funcionário cadastrado</li>
-                        <li>✅ Pedido criado e processado</li>
-                        <li>✅ Cozinha verificou disponibilidade</li>
-                        <li>✅ Notificações geradas automaticamente</li>
-                    </ul>
-                    <p class="mb-0"><strong>Todos os serviços estão comunicando corretamente!</strong></p>
-                </div>
-            `
+          <div class="alert alert-success">
+            <h5><i class="fas fa-check-circle"></i> Demonstração do Sistema de Notificações</h5>
+            <p>Foram criados pedidos para demonstrar todos os tipos de notificação:</p>
+            <ul>
+              <li>🆕 <strong>Pedido Criado:</strong> Notificação automática na criação</li>
+              <li>✅ <strong>Pedido Aceito:</strong> Quando a cozinha aceita (estoque e funcionários OK)</li>
+              <li>❌ <strong>Pedido Recusado:</strong> Quando falta estoque ou funcionários</li>
+              <li>🎉 <strong>Pedido Finalizado:</strong> Quando a cozinha completa o preparo (1-2 min)</li>
+            </ul>
+          </div>
+          <div class="row mt-4">
+            <div class="col-md-6">
+              <button class="btn btn-primary w-100" onclick="restaurantAPI.showNotificacoesDetails()">
+                🔔 Ver Todas as Notificações
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button class="btn btn-info w-100" onclick="restaurantAPI.getNotificationSummary()">
+                📊 Resumo de Notificações
+              </button>
+            </div>
+          </div>
+          <div class="row mt-2">
+            <div class="col-md-6">
+              <button class="btn btn-warning w-100" onclick="restaurantAPI.getActivePedidos()">
+                🍳 Pedidos Ativos na Cozinha
+              </button>
+            </div>
+            <div class="col-md-6">
+              <div class="input-group">
+                <input type="text" class="form-control" id="track-order-id" placeholder="ID do pedido">
+                <button class="btn btn-secondary" onclick="restaurantAPI.trackOrder()">🔍 Rastrear</button>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <small class="text-muted">
+              <strong>Dica:</strong> Use os IDs dos pedidos criados (${pedidoId}, ${pedidoRejeitado}) 
+              para rastrear o ciclo completo de notificações!
+            </small>
+          </div>
+        `
       );
     } catch (error) {
       this.showAlert(`❌ Erro na simulação: ${error.message}`, "danger");
@@ -687,7 +1268,7 @@ class RestaurantAPI {
   }
 
   // Utility Methods
-  showResult(title, content) {
+  showResult(title, content, autoScroll = true) {
     const resultsArea = document.getElementById("results-area");
     resultsArea.innerHTML = `
             <div class="service-card">
@@ -695,7 +1276,9 @@ class RestaurantAPI {
                 ${content}
             </div>
         `;
-    resultsArea.scrollIntoView({ behavior: "smooth" });
+    if (autoScroll) {
+      resultsArea.scrollIntoView({ behavior: "smooth" });
+    }
   }
 
   showAlert(message, type) {
@@ -768,6 +1351,26 @@ function loadPedidos() {
 
 function loadNotificacoes() {
   restaurantAPI.showNotificacoesDetails();
+}
+
+function getNotificationSummary() {
+  restaurantAPI.getNotificationSummary();
+}
+
+function trackOrder() {
+  restaurantAPI.trackOrder();
+}
+
+function getActivePedidos() {
+  restaurantAPI.getActivePedidos();
+}
+
+function startLiveNotificationDashboard() {
+  restaurantAPI.startLiveNotificationDashboard();
+}
+
+function stopLiveNotificationDashboard() {
+  restaurantAPI.stopLiveNotificationDashboard();
 }
 
 function simulateRestaurantFlow() {

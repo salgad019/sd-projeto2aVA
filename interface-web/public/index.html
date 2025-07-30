@@ -304,36 +304,104 @@
             <div class="service-icon text-center">
               <i class="fas fa-bell"></i>
             </div>
-            <h4 class="text-center mb-3">🔔 Notificações</h4>
+            <h4 class="text-center mb-3">🔔 Central de Notificações</h4>
             <div id="notificacoes-info">
               <p class="text-muted">Verificando status...</p>
             </div>
             <div class="text-center mt-3">
-              <button
-                class="btn btn-info btn-custom"
-                onclick="loadNotificacoes()"
-              >
-                <i class="fas fa-eye"></i> Ver Notificações
-              </button>
+              <div class="row">
+                <div class="col-6">
+                  <button
+                    class="btn btn-info btn-sm w-100 mb-2"
+                    onclick="loadNotificacoes()"
+                  >
+                    <i class="fas fa-eye"></i> Ver Todas
+                  </button>
+                </div>
+                <div class="col-6">
+                  <button
+                    class="btn btn-warning btn-sm w-100 mb-2"
+                    onclick="getNotificationSummary()"
+                  >
+                    <i class="fas fa-chart-bar"></i> Resumo
+                  </button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-6">
+                  <button
+                    class="btn btn-success btn-sm w-100 mb-2"
+                    onclick="getActivePedidos()"
+                  >
+                    <i class="fas fa-fire"></i> Ativos
+                  </button>
+                </div>
+                <div class="col-6">
+                  <button
+                    class="btn btn-danger btn-sm w-100 mb-2"
+                    onclick="startLiveNotificationDashboard()"
+                  >
+                    <i class="fas fa-broadcast-tower"></i> Live
+                  </button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-12">
+                  <button
+                    class="btn btn-secondary btn-sm w-100"
+                    onclick="document.getElementById('track-order-input').style.display = document.getElementById('track-order-input').style.display === 'none' ? 'block' : 'none'"
+                  >
+                    <i class="fas fa-search"></i> Rastrear Pedido
+                  </button>
+                </div>
+              </div>
+              <div id="track-order-input" style="display: none;" class="mt-2">
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control" id="track-order-id" placeholder="ID do pedido">
+                  <button class="btn btn-outline-primary" onclick="trackOrder()">
+                    <i class="fas fa-search"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Integration Demo -->
           <div class="service-card">
             <div class="service-icon text-center">
-              <i class="fas fa-cogs"></i>
+              <i class="fas fa-rocket"></i>
             </div>
-            <h4 class="text-center mb-3">⚙️ Demonstração Integrada</h4>
+            <h4 class="text-center mb-3">🚀 Demo: Sistema de Notificações</h4>
             <p class="text-center text-muted">
-              Simule o fluxo completo do restaurante
+              Demonstre o ciclo completo de notificações com timing de 1 minuto
             </p>
+            <div class="alert alert-info text-center">
+              <small>
+                <strong>Recursos:</strong> Notificações em tempo real • Rastreamento de pedidos • 
+                Filtragem por tipo • Timeline de status • Preparo rápido (1-2 min)
+              </small>
+            </div>
             <div class="text-center mt-3">
               <button
-                class="btn btn-danger btn-custom"
+                class="btn btn-danger btn-lg mb-3"
                 onclick="simulateRestaurantFlow()"
               >
-                <i class="fas fa-play"></i> Simular Fluxo Completo
+                <i class="fas fa-rocket"></i> Iniciar Demo Completa
               </button>
+              <br>
+              <button
+                class="btn btn-primary btn-sm me-2"
+                onclick="startLiveNotificationDashboard()"
+              >
+                <i class="fas fa-broadcast-tower"></i> Dashboard Live
+              </button>
+              <button
+                class="btn btn-info btn-sm"
+                onclick="loadNotificacoes()"
+              >
+                <i class="fas fa-bell"></i> Ver Notificações
+              </button>
+            </div>
             </div>
           </div>
         </div>
@@ -574,6 +642,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script src="index.js"></script>
+    <script src="./index.js"></script>
   </body>
 </html>
