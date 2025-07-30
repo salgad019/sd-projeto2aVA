@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 
 class UserBase(BaseModel):
@@ -24,3 +25,11 @@ class UserOut(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class FuncionarioDisponibilidade(BaseModel):
+    """Schema for staff availability response"""
+    total_funcionarios: int
+    funcionarios_disponiveis: int
+    disponivel: bool
+    funcionarios_ativos: list[UserOut]

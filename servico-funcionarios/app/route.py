@@ -12,6 +12,22 @@ def health_check():
     return {"status": "ok", "message": "Funcionarios service is running"}
 
 
+@router.get("/disponivel-funcionarios", response_model=schemas.FuncionarioDisponibilidade)
+def check_staff_availability(db: Session = Depends(database.get_db)):
+    """Check staff availability for kitchen operations"""
+    funcionarios = crud.get_users(db, skip=0, limit=100)
+    total = len(funcionarios)
+    # Simulate that staff is available if we have at least 2 employees
+    disponivel = total >= 2
+
+    return schemas.FuncionarioDisponibilidade(
+        total_funcionarios=total,
+        funcionarios_disponiveis=total,
+        disponivel=disponivel,
+        funcionarios_ativos=funcionarios
+    )
+
+
 @router.post("/", response_model=schemas.UserOut)
 def create(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db_user = crud.get_user_by_email(db, user.email)
@@ -49,7 +65,5 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(database.get_db)
     user = crud.authenticate_user(db, credentials.email, credentials.password)
     if not user:
         raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
+            status_code=401, detail="Invalid email or password")
     return user

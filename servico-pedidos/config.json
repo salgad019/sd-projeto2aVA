@@ -1,5 +1,5 @@
 {
-  "cozinha_host": "127.0.0.1",
-  "cozinha_porta": 5000,
+  "cozinha_host": "servico-cozinha",
+  "cozinha_porta": 9000,
   "cozinha_endpoint": "/preparar"
 }
