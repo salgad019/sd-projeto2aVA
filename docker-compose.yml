@@ -7,7 +7,9 @@ services:
     env_file:
       - ./servico-funcionarios/.env
     depends_on:
-      - funcionarios-db
+      funcionarios-db:
+        condition: service_healthy
+    restart: on-failure
 
   funcionarios-db:
     image: postgres:15
@@ -18,6 +20,11 @@ services:
       POSTGRES_DB: funcionarios_db
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d funcionarios_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Pedidos Service (Flask)
   servico-pedidos:
@@ -27,7 +34,9 @@ services:
     env_file:
       - ./servico-pedidos/.env
     depends_on:
-      - pedidos-db
+      pedidos-db:
+        condition: service_healthy
+    restart: on-failure
 
   pedidos-db:
     image: postgres:15
@@ -38,6 +47,11 @@ services:
       POSTGRES_DB: pedidos_db
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pedidos_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Cozinha Service (Java)
   servico-cozinha:
@@ -53,7 +67,9 @@ services:
     env_file:
       - ./servico-estoque/.env
     depends_on:
-      - estoque-db
+      estoque-db:
+        condition: service_healthy
+    restart: on-failure
 
   estoque-db:
     image: postgres:15
@@ -64,6 +80,11 @@ services:
       POSTGRES_DB: estoque_db
     ports:
       - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d estoque_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Notificações Service (Flask)
   servico-notificacoes:
@@ -73,7 +94,9 @@ services:
     env_file:
       - ./servico-notificacoes/.env
     depends_on:
-      - notificacoes-db
+      notificacoes-db:
+        condition: service_healthy
+    restart: on-failure
 
   notificacoes-db:
     image: postgres:15
@@ -84,6 +107,11 @@ services:
       POSTGRES_DB: notificacoes_db
     ports:
       - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notificacoes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # API Gateway (nginx)
   api-gateway:
