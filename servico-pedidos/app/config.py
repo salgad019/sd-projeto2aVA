@@ -19,5 +19,7 @@ class Config:
             self.COZINHA_ENDPOINT = os.getenv('COZINHA_ENDPOINT', '/preparar')
         
         self.COZINHA_URL = f"http://{self.COZINHA_HOST}:{self.COZINHA_PORTA}{self.COZINHA_ENDPOINT}"
+        self.BANCO_URL = "http://127.0.0.1:8000/registrar"
+        self.NOTIFICACAO_URL = "http://127.0.0.1:7000/notificar"
 
 config = Config()
