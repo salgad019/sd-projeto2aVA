@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🍽️ Sistema de Gestão do Restaurante</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .main-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        margin: 20px;
+        min-height: calc(100vh - 40px);
+      }
+
+      .service-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin: 10px 0;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 2px solid transparent;
+      }
+
+      .service-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      .service-card.online {
+        border-color: #28a745;
+      }
+
+      .service-card.offline {
+        border-color: #dc3545;
+        opacity: 0.7;
+      }
+
+      .status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      .status-online {
+        background-color: #28a745;
+      }
+
+      .status-offline {
+        background-color: #dc3545;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .order-item {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        border-left: 4px solid #007bff;
+      }
+
+      .notification-item {
+        background: #fff3cd;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        border-left: 4px solid #ffc107;
+      }
+
+      .metric-card {
+        text-align: center;
+        padding: 20px;
+        background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border-radius: 15px;
+        margin: 10px 0;
+      }
+
+      .btn-custom {
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .modal-content {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .form-control {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: border-color 0.3s ease;
+      }
+
+      .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+      }
+
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        padding: 20px;
+      }
+
+      .service-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        color: #667eea;
+      }
+
+      .section-title {
+        color: #333;
+        font-weight: 700;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="main-container">
+        <!-- Header -->
+        <div class="row">
+          <div class="col-12 text-center py-4">
+            <h1 class="display-4 fw-bold text-dark">
+              🍽️ Sistema de Gestão do Restaurante
+            </h1>
+            <p class="lead text-muted">Gestão Integrada de Microserviços</p>
+          </div>
+        </div>
+
+        <!-- Service Status Dashboard -->
+        <div class="row px-4">
+          <div class="col-12">
+            <h2 class="section-title">
+              <i class="fas fa-server"></i> Status dos Serviços
+            </h2>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Funcionários Service -->
+          <div class="service-card position-relative" id="funcionarios-card">
+            <div
+              class="status-badge status-offline"
+              id="funcionarios-status"
+            ></div>
+            <div class="service-icon text-center">
+              <i class="fas fa-users"></i>
+            </div>
+            <h4 class="text-center mb-3">👥 Funcionários</h4>
+            <div id="funcionarios-info">
+              <p class="text-muted">Verificando status...</p>
+            </div>
+            <div class="text-center mt-3">
+              <button
+                class="btn btn-primary btn-custom"
+                onclick="showFuncionariosModal()"
+              >
+                <i class="fas fa-user-plus"></i> Gerenciar
+              </button>
+              <button
+                class="btn btn-info btn-custom"
+                onclick="checkStaffAvailability()"
+              >
+                <i class="fas fa-clock"></i> Disponibilidade
+              </button>
+            </div>
+          </div>
+
+          <!-- Estoque Service -->
+          <div class="service-card position-relative" id="estoque-card">
+            <div class="status-badge status-offline" id="estoque-status"></div>
+            <div class="service-icon text-center">
+              <i class="fas fa-warehouse"></i>
+            </div>
+            <h4 class="text-center mb-3">📦 Estoque</h4>
+            <div id="estoque-info">
+              <p class="text-muted">Verificando status...</p>
+            </div>
+            <div class="text-center mt-3">
+              <button
+                class="btn btn-success btn-custom"
+                onclick="showEstoqueModal()"
+              >
+                <i class="fas fa-plus"></i> Adicionar Item
+              </button>
+              <button class="btn btn-info btn-custom" onclick="loadEstoque()">
+                <i class="fas fa-list"></i> Visualizar
+              </button>
+            </div>
+          </div>
+
+          <!-- Cozinha Service -->
+          <div class="service-card position-relative" id="cozinha-card">
+            <div class="status-badge status-offline" id="cozinha-status"></div>
+            <div class="service-icon text-center">
+              <i class="fas fa-utensils"></i>
+            </div>
+            <h4 class="text-center mb-3">🍳 Cozinha</h4>
+            <div id="cozinha-info">
+              <p class="text-muted">Verificando status...</p>
+            </div>
+            <div class="text-center mt-3">
+              <button
+                class="btn btn-warning btn-custom"
+                onclick="getCozinhaStatus()"
+              >
+                <i class="fas fa-info-circle"></i> Status Cozinha
+              </button>
+            </div>
+          </div>
+
+          <!-- Pedidos Service -->
+          <div class="service-card position-relative" id="pedidos-card">
+            <div class="status-badge status-offline" id="pedidos-status"></div>
+            <div class="service-icon text-center">
+              <i class="fas fa-receipt"></i>
+            </div>
+            <h4 class="text-center mb-3">🧾 Pedidos</h4>
+            <div id="pedidos-info">
+              <p class="text-muted">Verificando status...</p>
+            </div>
+            <div class="text-center mt-3">
+              <button
+                class="btn btn-primary btn-custom"
+                onclick="showPedidoModal()"
+              >
+                <i class="fas fa-plus"></i> Novo Pedido
+              </button>
+              <button class="btn btn-info btn-custom" onclick="loadPedidos()">
+                <i class="fas fa-list"></i> Listar
+              </button>
+            </div>
+          </div>
+
+          <!-- Notificações Service -->
+          <div class="service-card position-relative" id="notificacoes-card">
+            <div
+              class="status-badge status-offline"
+              id="notificacoes-status"
+            ></div>
+            <div class="service-icon text-center">
+              <i class="fas fa-bell"></i>
+            </div>
+            <h4 class="text-center mb-3">🔔 Central de Notificações</h4>
+            <div id="notificacoes-info">
+              <p class="text-muted">Verificando status...</p>
+            </div>
+            <div class="text-center mt-3">
+              <div class="row">
+                <div class="col-6">
+                  <button
+                    class="btn btn-info btn-sm w-100 mb-2"
+                    onclick="loadNotificacoes()"
+                  >
+                    <i class="fas fa-eye"></i> Ver Todas
+                  </button>
+                </div>
+                <div class="col-6">
+                  <button
+                    class="btn btn-warning btn-sm w-100 mb-2"
+                    onclick="getNotificationSummary()"
+                  >
+                    <i class="fas fa-chart-bar"></i> Resumo
+                  </button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-6">
+                  <button
+                    class="btn btn-success btn-sm w-100 mb-2"
+                    onclick="getActivePedidos()"
+                  >
+                    <i class="fas fa-fire"></i> Ativos
+                  </button>
+                </div>
+                <div class="col-6">
+                  <button
+                    class="btn btn-danger btn-sm w-100 mb-2"
+                    onclick="startLiveNotificationDashboard()"
+                  >
+                    <i class="fas fa-broadcast-tower"></i> Live
+                  </button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-12">
+                  <button
+                    class="btn btn-secondary btn-sm w-100"
+                    onclick="document.getElementById('track-order-input').style.display = document.getElementById('track-order-input').style.display === 'none' ? 'block' : 'none'"
+                  >
+                    <i class="fas fa-search"></i> Rastrear Pedido
+                  </button>
+                </div>
+              </div>
+              <div id="track-order-input" style="display: none;" class="mt-2">
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control" id="track-order-id" placeholder="ID do pedido">
+                  <button class="btn btn-outline-primary" onclick="trackOrder()">
+                    <i class="fas fa-search"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Integration Demo -->
+          <div class="service-card">
+            <div class="service-icon text-center">
+              <i class="fas fa-rocket"></i>
+            </div>
+            <h4 class="text-center mb-3">🚀 Demo: Sistema de Notificações</h4>
+            <p class="text-center text-muted">
+              Demonstre o ciclo completo de notificações com timing de 1 minuto
+            </p>
+            <div class="alert alert-info text-center">
+              <small>
+                <strong>Recursos:</strong> Notificações em tempo real • Rastreamento de pedidos • 
+                Filtragem por tipo • Timeline de status • Preparo rápido (1-2 min)
+              </small>
+            </div>
+            <div class="text-center mt-3">
+              <button
+                class="btn btn-danger btn-lg mb-3"
+                onclick="simulateRestaurantFlow()"
+              >
+                <i class="fas fa-rocket"></i> Iniciar Demo Completa
+              </button>
+              <br>
+              <button
+                class="btn btn-primary btn-sm me-2"
+                onclick="startLiveNotificationDashboard()"
+              >
+                <i class="fas fa-broadcast-tower"></i> Dashboard Live
+              </button>
+              <button
+                class="btn btn-info btn-sm"
+                onclick="loadNotificacoes()"
+              >
+                <i class="fas fa-bell"></i> Ver Notificações
+              </button>
+            </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Area -->
+        <div class="row px-4 mt-4">
+          <div class="col-12">
+            <div id="results-area"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Funcionarios Modal -->
+    <div class="modal fade" id="funcionariosModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">👥 Gerenciar Funcionários</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="funcionarioForm">
+              <div class="mb-3">
+                <label class="form-label">Nome</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="funcionario-nome"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="funcionario-email"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Senha</label>
+                <input
+                  type="password"
+                  class="form-control"
+                  id="funcionario-senha"
+                  required
+                />
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="createFuncionario()"
+            >
+              Criar Funcionário
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estoque Modal -->
+    <div class="modal fade" id="estoqueModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">📦 Adicionar ao Estoque</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="estoqueForm">
+              <div class="mb-3">
+                <label class="form-label">Produto</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="estoque-produto"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Quantidade</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="estoque-quantidade"
+                  min="1"
+                  required
+                />
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-success"
+              onclick="addEstoque()"
+            >
+              Adicionar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pedido Modal -->
+    <div class="modal fade" id="pedidoModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">🧾 Novo Pedido</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="pedidoForm">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">ID do Pedido</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="pedido-id"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Mesa</label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="pedido-mesa"
+                      min="1"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Cliente ID (opcional)</label>
+                <input type="text" class="form-control" id="pedido-cliente" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Itens do Pedido</label>
+                <div id="pedido-itens">
+                  <div class="row mb-2">
+                    <div class="col-md-5">
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Nome do item"
+                        name="item-nome"
+                      />
+                    </div>
+                    <div class="col-md-3">
+                      <input
+                        type="number"
+                        class="form-control"
+                        placeholder="Qtd"
+                        name="item-quantidade"
+                        min="1"
+                      />
+                    </div>
+                    <div class="col-md-3">
+                      <input
+                        type="number"
+                        class="form-control"
+                        placeholder="Preço"
+                        name="item-preco"
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+                    <div class="col-md-1">
+                      <button
+                        type="button"
+                        class="btn btn-success btn-sm"
+                        onclick="addPedidoItem()"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="createPedido()"
+            >
+              Criar Pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="./index.js"></script>
+  </body>
+</html>

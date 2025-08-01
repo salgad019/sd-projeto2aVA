@@ -1,6 +1,8 @@
-# 🍽️ Sistema Distribuído de Pedidos de Restaurante
+# 🍽️ Sistema de Gestão de Restaurante - Microserviços
 
-Projeto acadêmico desenvolvido para a disciplina de **Sistemas Distribuídos** (UFRPE), cujo objetivo é implementar um sistema realista e modular, com processos que se comunicam via **IP e porta**, mesmo executando localmente.
+Um sistema completo de gestão de restaurante implementado com arquitetura de microserviços, demonstrando integração entre serviços, comunicação inter-serviços e uma interface web moderna.
+
+Projeto acadêmico desenvolvido para a disciplina de **Sistemas Distribuídos** (UFRPE), implementando um sistema realista e modular, com processos que se comunicam via **IP e porta** utilizando containers Docker.
 
 ---
 
@@ -24,15 +26,15 @@ Cada funcionalidade é implementada como um **módulo/processo independente**, q
 
 ## 🔌 Módulos, Portas e Responsabilidades
 
-| Módulo                      | Porta | Linguagem  | Função Principal |
-|-----------------------------|-------|------------|------------------|
-| **Interface Web**           | 3000  | JavaScript | Cliente faz pedido e acompanha o status |
+| Módulo                      | Porta | Linguagem  | Função Principal                                     |
+| --------------------------- | ----- | ---------- | ---------------------------------------------------- |
+| **Interface Web**           | 3000  | JavaScript | Cliente faz pedido e acompanha o status              |
 | **Serviço de Pedidos**      | 4000  | Python     | Orquestrador do sistema, coordena os demais serviços |
-| **Serviço de Cozinha**      | 5000  | Java       | Prepara pedidos, consulta estoque e equipe |
-| **Serviço de Estoque**      | 6000  | Python     | Verifica disponibilidade de ingredientes |
-| **Serviço de Notificações** | 7000  | Java       | Notifica cliente sobre o status |
-| **Microserviço de Banco**   | 8000  | Java       | Persistência de dados dos pedidos e históricos |
-| **Serviço de Funcionários** | 9000  | Python     | Informa disponibilidade da equipe de cozinha |
+| **Serviço de Cozinha**      | 5000  | Java       | Prepara pedidos, consulta estoque e equipe           |
+| **Serviço de Estoque**      | 6000  | Python     | Verifica disponibilidade de ingredientes             |
+| **Serviço de Notificações** | 7000  | Java       | Notifica cliente sobre o status                      |
+| **Microserviço de Banco**   | 8000  | Java       | Persistência de dados dos pedidos e históricos       |
+| **Serviço de Funcionários** | 9000  | Python     | Informa disponibilidade da equipe de cozinha         |
 
 ---
 

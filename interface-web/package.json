@@ -1,0 +1,22 @@
+{
+  "name": "restaurant-management-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Restaurant Management Microservices System",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "python -m http.server 3000 --directory public",
+    "dev": "python -m http.server 3000 --directory public",
+    "build": "echo 'Static files - no build needed'",
+    "serve": "python -m http.server 3000 --directory public"
+  },
+  "keywords": [
+    "restaurant",
+    "microservices",
+    "management",
+    "frontend"
+  ],
+  "author": "Restaurant Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

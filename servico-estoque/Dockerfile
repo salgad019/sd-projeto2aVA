@@ -10,16 +10,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY ./app ./app
-COPY config.json .
+COPY *.py ./
+COPY .env .
 
 # Expose port
-EXPOSE 5000
+EXPOSE 6000
 
 # Set environment variables
-ENV FLASK_APP=app.main:app
+ENV FLASK_APP=estoque.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
 
 # Run the application
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["python", "estoque.py"]

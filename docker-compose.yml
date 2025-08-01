@@ -1,4 +1,5 @@
 services:
+  # Funcionários Service (FastAPI)
   servico-funcionarios:
     build: ./servico-funcionarios
     ports:
@@ -6,7 +7,9 @@ services:
     env_file:
       - ./servico-funcionarios/.env
     depends_on:
-      - funcionarios-db
+      funcionarios-db:
+        condition: service_healthy
+    restart: on-failure
 
   funcionarios-db:
     image: postgres:15
@@ -17,10 +20,115 @@ services:
       POSTGRES_DB: funcionarios_db
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d funcionarios_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  # Pedidos Service (Flask)
+  servico-pedidos:
+    build: ./servico-pedidos
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./servico-pedidos/.env
+    depends_on:
+      pedidos-db:
+        condition: service_healthy
+    restart: on-failure
+
+  pedidos-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pedidos_db
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pedidos_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Cozinha Service (Java)
+  servico-cozinha:
+    build: ./servico-cozinha
+    ports:
+      - "9000:9000"
+
+  # Estoque Service (Flask)
+  servico-estoque:
+    build: ./servico-estoque
+    ports:
+      - "6000:6000"
+    env_file:
+      - ./servico-estoque/.env
+    depends_on:
+      estoque-db:
+        condition: service_healthy
+    restart: on-failure
+
+  estoque-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: estoque_db
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d estoque_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Notificações Service (Flask)
+  servico-notificacoes:
+    build: ./servico-notificacoes
+    ports:
+      - "7000:7000"
+    env_file:
+      - ./servico-notificacoes/.env
+    depends_on:
+      notificacoes-db:
+        condition: service_healthy
+    restart: on-failure
+
+  notificacoes-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notificacoes_db
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notificacoes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # API Gateway (nginx)
   api-gateway:
     build: ./api-gateway
     ports:
       - "8080:80"
     depends_on:
       - servico-funcionarios
+      - servico-pedidos
+      - servico-cozinha
+      - servico-estoque
+      - servico-notificacoes
+
+  # Frontend Interface
+  interface-web:
+    build: ./interface-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
