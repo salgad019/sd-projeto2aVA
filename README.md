@@ -66,43 +66,6 @@ Cada funcionalidade é implementada como um **módulo/processo independente**, q
 [ Banco de Dados ] ← POST /registrar
 [ Notificações ] ← POST /notificar
 ```
-
----
-
-## 📬 Formatos de Mensagens
-
-### Pedido enviado à Cozinha
-
-```json
-{
-  "pedido_id": "abc123",
-  "itens": [
-    { "produto": "Pizza Margherita", "quantidade": 1 },
-    { "produto": "Suco", "quantidade": 2 }
-  ],
-  "prioridade": "normal"
-}
-```
-
-### Resposta da Cozinha
-
-```json
-{
-  "pedido_id": "abc123",
-  "status": "em_preparo",
-  "tempo_estimado_min": 25
-}
-```
-
-### Notificação
-
-```json
-{
-  "pedido_id": "abc123",
-  "mensagem": "Seu pedido está sendo preparado!"
-}
-```
-
 ---
 
 ## 🛠️ Tecnologias Utilizadas
