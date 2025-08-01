@@ -30,7 +30,7 @@ Cada funcionalidade é implementada como um **módulo/processo independente**, q
 | **Serviço de Pedidos**      | 4000  | Python     | Orquestrador do sistema, coordena os demais serviços |
 | **Serviço de Cozinha**      | 5000  | Java       | Prepara pedidos, consulta estoque e equipe |
 | **Serviço de Estoque**      | 6000  | Python     | Verifica disponibilidade de ingredientes |
-| **Serviço de Notificações** | 7000  | Java       | Notifica cliente sobre o status |
+| **Serviço de Notificações** | 7000  | Python       | Notifica cliente sobre o status |
 | **Microserviço de Banco**   | 8000  | Java       | Persistência de dados dos pedidos e históricos |
 | **Serviço de Funcionários** | 9000  | Python     | Informa disponibilidade da equipe de cozinha |
 
